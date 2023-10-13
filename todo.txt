@@ -1,0 +1,11 @@
+1. Eliminer les faux-positifs (tête)
+	- Détection de têtes
+	- Elimination du fond "inerte" -> zones à problème
+		- Moyenne sur plusieurs frames ?
+2. Analyse de trajectoire long terme
+	- Le ballon reste immobile
+	- Leballon sort de l'image
+3. Filtre de Kalman
+
+
+!!! - Connaître le fonctionnement de chaque fonction et leur complexité

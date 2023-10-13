@@ -1,0 +1,65 @@
+Docadis
+
+Bounce point detection:
+https://worldwide.espacenet.com/publicationDetails/biblio?FT=D&date=20130313&DB=EPODOC&CC=EP&NR=2455911B1
+
+TENNIS BASS TRACKING <<<33
+https://www.collectionscanada.gc.ca/obj/s4/f2/dsk3/SSU/TC-SSU-08302006125935.pdf
+
+FAT DOCUMENT for ball tracking
+https://books.google.fr/books?id=8Ca7DwAAQBAJ&printsec=frontcover&hl=fr&source=gbs_ViewAPI&redir_esc=y#v=onepage&q&f=false
+
+Soccer Hough transform
+https://www.researchgate.net/publication/3973976_A_ball_detection_algorithm_for_real_soccer_image_sequences
+
+Sites:
+PERFECT:
+https://towardsdatascience.com/ball-tracking-in-volleyball-with-opencv-and-tensorflow-3d6e857bd2e7
+
+Product:
+https://www.secondspectrum.com/index.html
+
+Vidéos:
+
+Voleyball watchdog:
+https://www.youtube.com/@VolleyballWatchdog
+
+Vollayball tracking 3d
+https://youtu.be/Q3al3mdlRAg?si=LQsXoeNgQJ2V1-Kj
+
+Ball prediction:
+https://www.youtube.com/watch?v=qF0PMJ0_gKI
+
+Circular Hough transform (detect circle)
+https://en.wikipedia.org/wiki/Circle_Hough_Transform
+
+Sklansky Algorithm
+http://cgm.cs.mcgill.ca/~athens/cs601/Sklansky2.html
+
+Kalman filter code: (predict trajectory)
+https://pysource.com/2021/11/02/kalman-filter-predict-the-trajectory-of-an-object/
+https://github.com/khw11044/kalmanFilter
+https://fr.wikipedia.org/wiki/Filtre_de_Kalman
+https://www.youtube.com/watch?v=3iqRhbXBVRE
+https://www.youtube.com/watch?v=VJ-gB9izieU
+
+Ping pong:
+https://www.youtube.com/watch?v=KazftgoOljM
+
+Ball tracking:
+https://www.youtube.com/watch?v=FN-YWTbVda8
+
+Object tracking:
+https://www.youtube.com/watch?v=O3b8lVF93jU&t=694s
+
+Motion detection:
+https://www.youtube.com/watch?v=oxmZ9zczptg
+
+The day it became mandatory:
+https://youtu.be/tEhZioJLPqA
+
+Ball compression slowmo:
+https://youtu.be/FXYKVkssks8
+
+Tennis ball tracking:
+https://github.com/ArtLabss/tennis-tracking

@@ -11,3 +11,4 @@
 
 
 !!! - Connaître le fonctionnement de chaque fonction et leur complexité
+

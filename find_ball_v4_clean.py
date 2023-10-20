@@ -248,7 +248,7 @@ def main(filename):
 
 
 start = time.time()
-main("point")
+main("videos/1_belle_recup.mp4")
 print(round(time.time() - start, 2))
 
 

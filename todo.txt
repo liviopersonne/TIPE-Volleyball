@@ -7,5 +7,7 @@
 	- Leballon sort de l'image
 3. Filtre de Kalman
 
+4. Filtre en cascade de haar sur delta
+
 
 !!! - Connaître le fonctionnement de chaque fonction et leur complexité

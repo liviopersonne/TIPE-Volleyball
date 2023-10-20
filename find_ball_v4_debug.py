@@ -117,17 +117,18 @@ def findcircles(raw, x, y, height, width, infos=False):
     edges = cv2.Canny(img, 200, 200)
     circles = []
 
-    cv2.imshow("Raw", cv2.resize(raw, [width*6, height*6]))
-    cv2.imshow("Canny 1", cv2.resize(edges, [width*6, height*6]))
-    cv2.imshow("Canny 2", cv2.resize(cv2.Canny(img, 200, 20), [width*6, height*6]))
-    cv2.imshow("Canny 3", cv2.resize(cv2.Canny(img, 5, 200), [width*6, height*6]))
-    cv2.waitKey(0)
-    cv2.destroyWindow("Raw")
-    cv2.destroyWindow("Canny 1")
-    cv2.destroyWindow("Canny 2")
-    cv2.destroyWindow("Canny 3")
 
     if infos:
+        cv2.imshow("Raw", cv2.resize(raw, [width*6, height*6]))
+        cv2.imshow("Canny 1", cv2.resize(edges, [width*6, height*6]))
+        cv2.imshow("Canny 2", cv2.resize(cv2.Canny(img, 200, 20), [width*6, height*6]))
+        cv2.imshow("Canny 3", cv2.resize(cv2.Canny(img, 5, 200), [width*6, height*6]))
+        cv2.waitKey(0)
+        cv2.destroyWindow("Raw")
+        cv2.destroyWindow("Canny 1")
+        cv2.destroyWindow("Canny 2")
+        cv2.destroyWindow("Canny 3")
+
         cpy = raw.copy()
         cpy2 = img.copy()
         cpy3 = raw.copy()
@@ -270,8 +271,8 @@ def main():
     ####################
     #### Constantes ####
     ####################
-    video = cv2.VideoCapture('data\\point.mp4')
-    scaledown = .7  #Valeur de réduction de taille
+    video = cv2.VideoCapture('data\\videos\\1_belle_recep.mp4')
+    scaledown = .5  #Valeur de réduction de taille
     precedant = None
     global tracklist
     tracklist = []  #Liste des trajectoires possibles par score décroissant
@@ -280,7 +281,7 @@ def main():
     ########################
     #### Get Properties ####
     ########################
-    if video.isOpened():  
+    if video.isOpened(): 
         vidwidth = video.get(3)
         vidwidthscale = int(vidwidth * scaledown)
         vidheight = video.get(4)
@@ -496,7 +497,7 @@ def main():
             break
 
 
-INFOS = True
+INFOS = False
 main()
 # try:
 #     out.release()

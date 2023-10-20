@@ -230,7 +230,7 @@ def main(filename, scaledown):
     ####################
     #### Constantes ####
     ####################
-    video = cv2.VideoCapture(f'data/{filename}.mp4')
+    video = cv2.VideoCapture(f'data\\{filename}.mp4')
     precedant = None
     global tracklist
     tracklist = []  #Liste des trajectoires possibles par score décroissant
@@ -276,9 +276,10 @@ def main(filename, scaledown):
         ########################################
         #### Get contours of movement areas ####
         ########################################
-        LOWPASS = 20
+        LOWPASS = 10
         HIGHPASS = 255
         threshold = cv2.threshold(delta, LOWPASS, HIGHPASS, cv2.THRESH_BINARY)[1]
+        cv2.imshow("threshold before", cv2.resize(threshold, [vidwidthscale, vidheightscale]))
         threshold = cv2.dilate(threshold,None,iterations = 10)  #Get larger whites
         # t1 = threshold.copy()
         threshold = cv2.erode(threshold, None, iterations = 10)
@@ -377,7 +378,7 @@ def main(filename, scaledown):
             if not t.check:
                 nf = frame.copy()
                 t.draw(nf)
-                cv2.imshow('Not connected tracks', cv2.resize(nf, [vidwidthscale, vidheightscale]))
+                # cv2.imshow('Not connected tracks', cv2.resize(nf, [vidwidthscale, vidheightscale]))
                 cv2.waitKey(0)
                 cv2.destroyWindow('Not connected tracks')
 
@@ -456,7 +457,7 @@ def main(filename, scaledown):
 
 
 INFOS = True
-main('lancer', .7)
+main('videos\\4_top_smash', .2)
 # try:
 #     out.release()
 # except Exception:

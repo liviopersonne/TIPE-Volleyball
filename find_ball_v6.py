@@ -84,216 +84,114 @@ def contourScore(contour, miny, maxy, meany):  #https://docs.opencv.org/4.x/d3/d
 
     return totalscore
 
-# TODO(A retirer)
-#Checks if an image contains a principal circular object
-def findcircles(raw, x, y, height, width, infos=False):
-    img = cv2.GaussianBlur(raw, (5,5), 0)
-    edges = cv2.Canny(img, 200, 200)
-    circles = []
 
-    
-    if infos:
-        cv2.imshow("Raw", cv2.resize(raw, [width*6, height*6]))
-        cv2.imshow("Canny 1", cv2.resize(edges, [width*6, height*6]))
-        cv2.imshow("Canny 2", cv2.resize(cv2.Canny(img, 200, 20), [width*6, height*6]))
-        cv2.imshow("Canny 3", cv2.resize(cv2.Canny(img, 5, 200), [width*6, height*6]))
-        cv2.waitKey(0)
-        cv2.destroyWindow("Raw")
-        cv2.destroyWindow("Canny 1")
-        cv2.destroyWindow("Canny 2")
-        cv2.destroyWindow("Canny 3")
-        cpy = raw.copy()
-        cpy2 = img.copy()
-        cpy3 = raw.copy()
-        cpy4 = raw.copy()
-        blank1 = np.zeros([int(height), int(width), 3], dtype=np.uint8)
-        blank2 = blank1.copy()
+# Trouve toutes les informations sur un contour unique - exporte et importe dans l'arbre kd et renvoie le cercle trouvé
+def analyse_contour(full, contour, thresh, x, y, width, height, nbrFormes, infos=False):
+    contourArea = cv2.contourArea(contour)
+    hull = cv2.convexHull(contour)
+    hullArea = cv2.contourArea(hull)
+    (cx, cy), r = cv2.minEnclosingCircle(contour)
+    circleArea = np.pi*(r**2)
+    frameArea = width * height
 
-    
-    # Hough circles method (bad)
-    # hough_circles = cv2.HoughCircles(edges, cv2.HOUGH_GRADIENT, 1, 30, param1=50, param2=10, minRadius=0, maxRadius=200)
-    # if hough_circles is not None:
-    #     circles = np.uint16(np.around(hough_circles))
-    #     for (x, y, r) in circles[0, :]:
-    #         cv2.circle(cpy, (x, y), r, (255,0,0), 1)
-    #         cv2.circle(cpy, (x, y), 0, (0,0,255), 1)
+    # Si l'une des aires est nulle alors il n'y a pas de cercle
+    if min(contourArea, hullArea, circleArea, frameArea) == 0:
+        return None
 
-    #Find contours method
-    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    # cv2.drawContours(cpy4, contours, -1, (255, 0, 0), -1)
-    for contour in contours:
-        hull = cv2.convexHull(contour)
-        center, radius = cv2.minEnclosingCircle(hull)
+    solidite = contourArea / hullArea   # Mesure de la convexité d'un contour
+    circularite = hullArea / circleArea # Mesure de la "circularité" d'un contour
+    taille = circleArea / frameArea     # Mesure de la taille d'un contour dans son contexte
 
-        hull_area = cv2.contourArea(hull)
-        circle_area = np.pi*(radius**2)
-        area_ratio = hull_area/circle_area
-        
+    # Donnée pour l'arbre kd
+    data = {
+        "solidite": solidite, "circularite": circularite, "taille": taille, 
+        "area": contourArea, "hull": hullArea, "circle": circleArea,
+        "frame": frameArea, "formes": nbrFormes
+        }
 
-
+    # Qualifier la donnée avec l'arbre kd
+    global kd_tree, kd_tree_criteria, kd_tree_normalization, nbr_voisins
+    if kd_tree is not None:
+        point_data = [data[crit] for crit in kd_tree_criteria]
+        point_classifieur = classifieur.Data.create_point(point_data)
+        score_balle = classifieur.score_ppv(kd_tree, point_classifieur, nbr_voisins, kd_tree_normalization)
         if infos:
-            cv2.drawContours(blank1, [contour], -1, (255, 0, 0), 0)
-            cv2.drawContours(blank1, [hull], -1, Color.red, 0)
-            cv2.drawContours(blank2, [contour], -1, (255, 0, 0), 0)
-            cv2.circle(blank2, (round(center[0]), round(center[1])), round(radius), Color.green, 0)
-            print("Hull :", hull_area, " Circle :", circle_area, " Ratio :", area_ratio)
-        
+            print("ppv", classifieur.k_ppv(kd_tree, point_classifieur, 5, kd_tree_normalization))
+            print("Score ppv", score_balle)
+        return_info = Circle((cx+x, cy+y), r, score_balle)
+    else: # Si l'arbre n'est pas défini
+        return_info = Circle((cx+x, cy+y), r, circularite)
 
-        if area_ratio >= 0.6:
-            circles.append(Circle((round(center[0] + x), round(center[1] + y)), radius, area_ratio))
-
-
-        #Secondary info
-        # hull_perimeter = cv2.arcLength(hull, True)
-        # perimeter_ratio = hull_perimeter/hull_area
-
-        # print(round(area_ratio, 2), end = " ")
-
-        if infos:
-            if area_ratio >= 0.9:
-                cv2.circle(cpy3, tuple(map(int, center)), int(radius), (0, 255, 0), 1)
-            elif area_ratio >= 0.8:
-                cv2.circle(cpy3, tuple(map(int, center)), int(radius), (0, 200, 100), 1)
-            elif area_ratio >= 0.7:
-                cv2.circle(cpy3, tuple(map(int, center)), int(radius), (0, 100, 200), 1)
-            elif area_ratio >= 0.6:
-                cv2.circle(cpy3, tuple(map(int, center)), int(radius), (0, 50, 255), 1)
-
-    # print("")  #Retour à la ligne
-    # l = len(os.listdir("rawdata/raw"))
-    # cv2.imwrite(f"rawdata/raw/{l}.png", cpy)
-    # cv2.imwrite(f"rawdata/edges/{l}.png", edges)
+    # Exporter la donnée dans l'arbre kd
     if infos:
-        cv2.imshow("1 zone", cv2.resize(cpy, [width*6, height*6]))
-        cv2.imshow("2 flou", cv2.resize(cpy2, [width*6, height*6]))
-        cv2.imshow("3 bords", cv2.resize(edges, [width*6, height*6]))
-        cv2.imshow("4 contours", cv2.resize(cpy4, [width*6, height*6]))
-        cv2.imshow("hull", cv2.resize(blank1, [width*6, height*6]))
-        cv2.imshow("enc circle", cv2.resize(blank2, [width*6, height*6]))
-        cv2.imshow("5 cercles", cv2.resize(cpy3, [width*6, height*6]))
-        # for c in contours:
-        #     nf = cpy.copy()
-        #     cv2.drawContours(nf, [c], -1, (255, 0, 0), -1)
-        #     cv2.imshow("Contour", cv2.resize(nf, [width*6, height*6]))
-        #     cv2.waitKey(0)
-        #     cv2.destroyWindow("Contour")
-        k = cv2.waitKey(0) & 0xFF
-        if k == 13:   #Skip rest of zones
-            cv2.destroyWindow("1 zone")
-            cv2.destroyWindow("2 flou")
-            cv2.destroyWindow("3 bords")
-            cv2.destroyWindow("4 contours")
-            cv2.destroyWindow("5 cercles")
-            cv2.destroyWindow("hull")
-            cv2.destroyWindow("enc circle")
-            return circles
-        elif k == ord('e'):   #Export this image
-            l = len(os.listdir('data\\'))
-            cv2.imwrite(f"data\\img{l}_raw.png", cpy)
-            cv2.imwrite(f"data\\img{l}_blur.png", cpy2)
-            cv2.imwrite(f"data\\img{l}_edge.png", edges)
-            cv2.imwrite(f"data\\img{l}_contours.png", cpy4)
-            cv2.imwrite(f"data\\img{l}_hull.png", blank1)
-            cv2.imwrite(f"data\\img{l}_encl_circle.png", blank2)
-            cv2.imwrite(f"data\\img{l}_circles.png", cpy3)
-        cv2.destroyWindow("1 zone")
-        cv2.destroyWindow("2 flou")
-        cv2.destroyWindow("3 bords")
-        cv2.destroyWindow("4 contours")
-        cv2.destroyWindow("5 cercles")
-        try:
-            cv2.destroyWindow("hull")
-            cv2.destroyWindow("enc circle")
-        except Exception:
-            pass
+        showImage = cv2.rectangle(full, (x, y), (x+width, y+height), Color.red, 2)
+        cv2.imshow("analysed contour", showImage)
+        key = cv2.waitKey(0) & 0xFF
+        ball_test = None
+        if key == 13: #Enter
+            ball_test = True
+        elif key == 8: #Backspace
+            ball_test = False
+        cv2.destroyWindow("analysed contour")
 
-    return circles
+        global csv_filename
+        if ball_test is not None:
+            csv_data = {"id": -1, "positif": ball_test}|data
+            export_data(csv_filename, thresh, csv_data)
+    
+    return return_info
 
-# Va faire une analyse d'une zone de l'image en utilisant le delta
+
+# Trouve toutes les informations sur une zone de mouvement unique - renvoie tous les cercles trouvés
 def analyse(raw, delta, x, y, height, width, infos=False):
+    global min_side_size
     LUM_BAS = 30
     thresh = cv2.threshold(delta, LUM_BAS, 255, cv2.THRESH_BINARY)[1]
     colorthresh = cv2.cvtColor(thresh, cv2.COLOR_GRAY2RGB)
-    frame_area = height*width   #Aire de la zone
-    white_pixels = cv2.countNonZero(thresh)    #Aire des pixels blancs dans la zone
-
-    # Méthode du reserrement
-    PRECISION, PTS = 1, 50
-    hull = hull_delta_close(delta, height, width, LUM_BAS, PRECISION, PTS)  #Calcul de l'enveloppe
-    cv2.drawContours(colorthresh, [hull], -1, Color.red, 2)
-    hull_area = cv2.contourArea(hull)   #Aire de l'enveloppe
-    center, radius = cv2.minEnclosingCircle(hull)  #Cercle circonscript à l'enveloppe
-    circle_area = np.pi*(radius**2)   #Aire du cercle circonscript
-
-    # print("White:", white_pixels, "Hull:", hull_area, "Circle:", circle_area, "Frame:", frame_area)
-    solidite, circularite, taille = white_pixels/hull_area, hull_area/circle_area, white_pixels/frame_area
-    print("Solidite:", solidite, "Circularite:", circularite, "Taille:", taille)
-
-    ### VARIABLES ###
-    csv_filename = "all.csv"
-    NBR_VOISINS = 10
-    data = {
-        "solidite": solidite, "circularite": circularite, "taille": taille, 
-        "white": white_pixels, "hull": hull_area, "circle": circle_area, "frame": frame_area
-        }
-
-    # Calcul du score de la forme selon l'arbre kd
-    global kd_tree, kd_tree_criteria
-    point_data = [data[crit] for crit in kd_tree_criteria]
-    x = classifieur.Data.create_point(point_data)
-    score_balle = classifieur.score_ppv(kd_tree, x, NBR_VOISINS)
-    print("ppv", classifieur.k_ppv(kd_tree, x, NBR_VOISINS))
-    print("Score ppv", score_balle)
-
-
-    # 1: Solidité + vitesse de la forme
-    # 2: Circularité de la forme
-    # 3: Taille de la forme dans la frame
-    # Adaboost // Kppv (arbre kd) // ID3
-
-    cv2.imshow("analysed frame", raw)
-    cv2.imshow("delta", delta)
-    cv2.imshow("contour", colorthresh)
-
-    key = cv2.waitKey(0) & 0xFF
-    ball_test = None
-    if key == 13: #Enter
-        ball_test = True
-    elif key == 8: #Backspace
-        ball_test = False
     
-    # Exportation dans le fichier csv
-    if ball_test is not None:
-        csv_data = {"id": -1, "positif": ball_test}|data
-        print(csv_data)
-        export_data(csv_filename, thresh, csv_data)
 
-    cv2.destroyWindow("analysed frame")
-    cv2.destroyWindow("delta")
-    cv2.destroyWindow("contour")
+    # Méthode d'analyse de chaque composante connexe
+    contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    cercles = []
+    nbrFormes = len(contours)
+    if contours:
+        cv2.imshow("analysed zone", raw)
+    for contour in contours:
+        tx,ty,tw,th = cv2.boundingRect(contour)
+        zone = thresh[ty:ty+th, tx:tx+tw]
+        if min(tw, th) > min_side_size:
+            cercle = analyse_contour(colorthresh.copy(), contour, zone, tx, ty, tw, th, nbrFormes, infos)
+            if cercle is not None:
+                (cx, cy) = cercle.center
+                cercle.center = (cx + x, cy + y) # On décale le centre par rapport à l'emplacement de la zone
+                cercles.append(cercle)
+    if contours:
+        cv2.destroyWindow("analysed zone")
+    return cercles
+
 
 
 # Exporte une image de seuil dans le fichier csv de nom filename
 # avec les informations de solidité, circularité, et taille et si c'est le ballon
 def export_data(filename, thresh, data):
     print(data)
-    l = len(os.listdir('data/img'))
-    cv2.imwrite(f"data/img/{l}.png", thresh)
+    img_dir = 'data/img_contour'
+    l = len(os.listdir(img_dir))
     data["id"] = l
-    path = f"data/{filename}"
-    if os.path.isfile(path):
-        csvfile = open(path, "a", newline="")
+    if os.path.isfile(filename):
+        csvfile = open(filename, "a", newline="")
         writer = csv.DictWriter(csvfile, delimiter=";", fieldnames=list(data.keys()))
     else:
-        csvfile = open(path, "w", newline="")
+        csvfile = open(filename, "w", newline="")
         writer = csv.DictWriter(csvfile, delimiter=";", fieldnames=list(data.keys()))
         writer.writeheader()
+    cv2.imwrite(f"{img_dir}/{l}.png", thresh)
     writer.writerow(data)
     csvfile.close()
         
 
 
-def main(filename, scaledown, frame_offset):
+def main(filename, scaledown, frame_offset, INFOS=False):
     ####################
     #### Constantes ####
     ####################
@@ -342,6 +240,7 @@ def main(filename, scaledown, frame_offset):
             precedant = gray
             avg_frame = gray
         frames_seen += 1
+        print("Current frame:", frames_seen)
 
         delta = cv2.absdiff(precedant, gray) # Différence avec l'image précédente
         avg_delta = cv2.absdiff(avg_frame, gray) # Différence avec l'image moyenne
@@ -374,8 +273,6 @@ def main(filename, scaledown, frame_offset):
         # alpha = 2.5/(frames_seen)
         # avg_frame = cv2.addWeighted(gray, alpha, avg_frame, 1-alpha, 0.0)
 
-
-
         # blank = np.zeros([int(vidheight), int(vidwidth), 3], dtype=np.uint8)
         # cont1 = blank.copy()
         # cont2 = blank.copy()
@@ -384,6 +281,11 @@ def main(filename, scaledown, frame_offset):
         # circles = findcircles(frame, 0, 0, vidheight, vidwidth, infos=False)
         # for c in circles:
         #     cv2.circle(cpy, c.center, round(c.radius), Color.green, 3)
+
+
+
+
+
 
         ##########################
         #### Analyse contours ####
@@ -396,14 +298,13 @@ def main(filename, scaledown, frame_offset):
             x,y,width,height = cv2.boundingRect(contour)
             zone = frame[y:y+height, x:x+width]
 
-            if width > 60 and height > 60:
-                zonedelta = delta[y:y+height, x:x+width]
-                analyse(zone, zonedelta, x, y, height, width, infos=INFOS)
+            # if width > 60 and height > 60:
+            zonedelta = delta[y:y+height, x:x+width]
+            analyse(zone, zonedelta, x, y, height, width, INFOS)
 
-            # circles = findcircles(zone, x, y, height, width, infos=INFOS)
             circles = []
-            # cv2.rectangle(cont2, (x, y), (x+width, y+height), Color.red, 5)
 
+            # cv2.rectangle(cont2, (x, y), (x+width, y+height), Color.red, 5)
 
             #####################################
             #### Add circles to trajectories ####
@@ -546,12 +447,16 @@ def main(filename, scaledown, frame_offset):
             break
 
 
-INFOS = False
-frame_offset = 0
-global kd_tree, kd_tree_criteria
-kd_tree_criteria = ["solidite", "white", "frame"]
-kd_tree = classifieur.build_kd_tree("data/all.csv", kd_tree_criteria)
-main('videos\\4_service', .25, frame_offset)
+videos = ['videos/4_service', 'videos/4_top_smash']
+global kd_tree, kd_tree_criteria, kd_tree_normalization, csv_filename, nbr_voisins, min_side_size
+min_side_size = 30
+csv_filename = "data/contours_tree.csv"
+kd_tree_criteria = ["formes", "circularite", "taille", "circle"]
+kd_tree_normalization = [0.3, 20, 15, 0.001]
+nbr_voisins = 50
+# kd_tree = classifieur.build_kd_tree("data/all.csv", kd_tree_criteria)
+kd_tree = classifieur.build_kd_tree("data/contours_tree.csv", kd_tree_criteria)
+main(videos[1], .25, frame_offset=0, INFOS=True)
 
 
 

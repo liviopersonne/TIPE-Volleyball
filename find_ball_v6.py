@@ -1,16 +1,47 @@
 import cv2, time
-import numpy as np
-from track import Track
-from circle import Circle
-import os
-from analyse_tools import *
-import classifieur
-from color import Color
 import csv
+import numpy as np
+import os
+from color import Color
+from circle import Circle
+# from analyse_tools import *
+import classifieur
+from track import Track
 
+
+#Give a score to a contour regarding only its shape and position
+'''
+What is looked at (contour):
+    ?Height ratio (height comared to other contours)
+        smaller = better
+    --Contour area ??
+        usually between 300 and 800 (depends a lot on speed)
+        minimum seen : 40
+        maximim seen : 1200
+    ?Height / Width ratio
+        usually between 0.7 and 1.8
+        minimum seen : 0.5
+        maximum seen : 3.2
+    ||Extent : Object area / Bounding rectangle area
+        ususlly between 0.5 and 0.75
+        minimum seen : 0.25
+        maximum seen : 0.85
+    ||Compactness: Perimeter / Area
+        usually between 0.15 and 0.35
+        minimum seen : 0.13
+        maximum seen : 0.58
+    ||Solidity : Contour Area / Convex Hull Area
+        usually between 0.8 and 1.0
+        minimum seen : 0.6
+        maximum seen : 1.0
+
+    Hough Detection
+    Image comparison
+    COCO image detection
+'''
 
 ''' 
-Score criteria:
+Score criteria (trajectory):
     Big speed
     Top of screen
     Corresponding angle / position (KALMAN FILTER)
@@ -24,65 +55,7 @@ Score criteria:
 '''
 
 
-#Give a score to a contour regarding only its shape and position
-'''
-What is looked at:
-    Height ratio (height comared to other contours)
-        smaller = better
-    Contour area ??
-        usually between 300 and 800 (depends a lot on speed)
-        minimum seen : 40
-        maximim seen : 1200
-    Height / Width ratio
-        usually between 0.7 and 1.8
-        minimum seen : 0.5
-        maximum seen : 3.2
-    Extent : Object area / Bounding rectangle area
-        ususlly between 0.5 and 0.75
-        minimum seen : 0.25
-        maximum seen : 0.85
-    Compactness: Perimeter / Area
-        usually between 0.15 and 0.35
-        minimum seen : 0.13
-        maximum seen : 0.58
-    Solidity : Contour Area / Convex Hull Area
-        usually between 0.8 and 1.0
-        minimum seen : 0.6
-        maximum seen : 1.0
 
-    Hough Detection
-    Image comparison
-    COCO image detection
-'''
-# TODO(A retirer)
-def contourScore(contour, miny, maxy, meany):  #https://docs.opencv.org/4.x/d3/dc0/group__imgproc__shape.html#ga8d26483c636be6b35c3ec6335798a47c
-    area = cv2.contourArea(contour)
-    permieter = cv2.arcLength(contour, True)
-    x,y,width,height = cv2.boundingRect(contour)
-    center,radius = cv2.minEnclosingCircle(contour)
-    hull = cv2.convexHull(contour)       #Convex shape that contains everything
-    hull_area = cv2.contourArea(hull)
-
-    aspect_ratio = height / width
-    score1 = reward(aspect_ratio, 0.5, 0.7, 1.8, 3.2)
-    extent = area / (width*height)
-    score2 = reward(extent, 0.25, 0.5, 0.75, 0.85)
-    if area:
-        compactness = permieter / area
-    else:
-        compactness = 0
-    score3 = reward(compactness, 0.13, 0.15, 0.35, 0.58)
-    if hull_area:
-        solidity = area / hull_area
-    else:
-        solidity = 0
-    score4 = reward(solidity, 0.6, 0.8, 1, 2)
-    heightratio = (center[1] - miny) / (meany - miny + 1)  #"+1" to avoid 0 division
-    score5 = -heightratio
-
-    totalscore = score1 + score2 + score3 + score4 + score5
-
-    return totalscore
 
 
 # Trouve toutes les informations sur un contour unique - exporte et importe dans l'arbre kd et renvoie le cercle trouvé

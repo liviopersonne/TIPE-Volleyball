@@ -5,7 +5,7 @@ import cv2
 
 # Classe de donnée d'arbre kd
 class Data:
-    # Create a data class for a row read from a csv, the row has nbr_dims dimensions
+    # Crée une donnée avec une ligne "row" d'un fichier csv, cette ligne a "nbr_dims" dimensions
     def __init__(self, row, arguments):
         if row is None:
             return
@@ -18,7 +18,7 @@ class Data:
             self.positive = False
         self.payload = [float(l[i]) for i in arguments]
 
-    # Create a data point by entering its parameters
+    # Crée un point de donnée en entrant ses paramètres (on ne sait pas si c'est le ballon)
     def create_point(payload):
         pt = Data(None, 0)
         pt.payload = payload
@@ -26,7 +26,7 @@ class Data:
         pt.positive = False
         return pt
 
-    # Print a data object
+    # Montre un point de données
     def __repr__(self):
         if self.id == -1:
             return f"ManualData"
@@ -43,7 +43,7 @@ class Data:
 def iterdata(filename, criteria):
     with open(filename, "r", newline="") as csvfile:
         reader = csv.reader(csvfile)
-        headers = next(reader)[0].split(";")  #Get ordered list of headers
+        headers = next(reader)[0].split(";")  #Liste ordonnée des en-têtes
         arguments = []
         for crit in criteria:
             ind = headers.index(crit)
@@ -67,14 +67,14 @@ def switch(l, x, y):
     l[x] = l[y]
     l[y] = save
 
-# Check if a list is ordered
+# Vérifie si une liste est ordonnée
 def ordered(l):
     for i in range(len(l) - 1):
         if l[i] > l[i+1]:
             return False
     return True
 
-# Partitionne la data list l[s:f] autour de l'élément i sur la dième dimension
+# Partitionne la data list l[s:f] autour de l'élément i sur la d-ième dimension
 def partitionner(l, s, f, i, d):
     n = len(l)
     assert(ordered([0, s, i, f, n-1]) and 0 <= d)
@@ -111,7 +111,9 @@ def selection_sous_liste(l, a, b, r, d):
 def selection_liste(l, r, d):
     return selection_sous_liste(l, 0, len(l)-1, r, d)
             
-# Affiche les composantes d des élements d'une liste de data: l
+# Affiche les composantes sur la dimension d des élements d'une liste de data: l
+# d = -2 -> trie selon x.payload
+# d = -1 -> affiche toutes les dimensions
 def print_components(l, d = -1):
     dims = len(l[0].payload)
     assert(d < dims)
@@ -172,7 +174,7 @@ def build_kd_tree_from_list(l, nbr_dims, dimension = 0):
         next_dimension = (dimension + 1) % nbr_dims
         return kd_tree(mediane, dimension, build_kd_tree_from_list(liste_g, nbr_dims, next_dimension), build_kd_tree_from_list(liste_d, nbr_dims, next_dimension))
 
-# Crée un arbre kd avec toutes les données de FILE, si n!=-1, on ne prend que les n premières données
+# Crée un arbre kd avec toutes les données du fichier "filename", si n!=-1, on ne prend que les n premières données
 def build_kd_tree(filename, criteria, n = -1):
     if n == -1:
         return build_kd_tree_from_list(list(iterdata(filename, criteria)), len(criteria))
@@ -186,9 +188,9 @@ def dist(a, b, normalization):
         d += abs(a.payload[i] - b.payload[i]) * normalization[i]
     return d
 
-# Trouve les k plus proches voisins de x dans un arbre kd: t
-# Si distances est vrai, on renvoie le tableau des (point, distance)
-# Si distances est faux, on renvoie le tableau des points
+# Trouve les k plus proches voisins de x dans un arbre kd "t"
+# Si "distances" est vrai, on renvoie le tableau des (point, distance)
+# Si "distances" est faux, on renvoie le tableau des points
 def k_ppv(t, x, k, normalization, distances = False):
     if t is None or k < 0:
         return []
@@ -229,6 +231,7 @@ def k_ppv(t, x, k, normalization, distances = False):
     else:
         return list(map(lambda x: x[0], points_surs))
 
+# Score d'une donnée "x" dans l'arbre kd "t": proportion de points positifs parmi les "k" plus proches voisins
 def score_ppv(t, x, k, normalization):
     assert(k > 0)
     ppv = k_ppv(t, x, k, distances=False, normalization=normalization)
@@ -284,9 +287,24 @@ def show_3d_kd_tree(t, dims, criteria = None, normalization = [1, 1, 1], lims = 
         ax.set_xlabel(criteria[dims[0]])
         ax.set_ylabel(criteria[dims[1]])
         ax.set_zlabel(criteria[dims[2]])
+        
     plt.show()
 
-
+# Affiche les n premiers points sur un axe selon criteria (vert = balle / rouge = pas balle)
+def show_1d_points(filename, criteria, n, lim = None):
+    points = first_data(filename, [criteria], n)
+    fig = plt.figure()
+    if lim is not None:
+        ax = fig.add_subplot(xlim = lim, ylim = (-1, 100))
+    else:
+        ax = fig.add_subplot(ylim = (-1, 100))
+    ax.set_xlabel(criteria)
+    for p in points:
+        if p.positive:
+            ax.scatter(p.payload[0], 4, marker=".", color="g")
+        else:
+            ax.scatter(p.payload[0], 0, marker=".", color="r") 
+    plt.show()
 
 
 
@@ -299,11 +317,15 @@ if __name__ == '__main__':
 
     # l = first_data(filename, ["solidite", "white", "frame"], 10)
 
-    criteria = ["formes", "circularite", "taille", "circle"]
-    t = build_kd_tree(filename, criteria, 100)
-    print_kd_tree(t)
-    show_3d_kd_tree(t, [0, 1, 3], criteria, [0.3, 20, 0.001], [(0, 15), (0, 20), (0, 10)])
-    # show_3d_kd_tree(t, [0, 1, 2], criteria, [0.3, 20, 15], [(0, 15), (0, 20), (15, 30)])
+    criteria = ["formes", "circularite", "taille", "circle", "solidite"]
+    t = build_kd_tree(filename, criteria, 200)
+    # print_kd_tree(t)
+    ## show_3d_kd_tree(t, [0, 1, 3], criteria, [0.3, 20, 0.001], [(0, 15), (0, 20), (0, 10)])
+    show_3d_kd_tree(t, [0, 1, 2], criteria, [0.3, 20, 5], [(0, 15), (0, 20), (4, 10)])
+    # show_3d_kd_tree(t, [0, 2, 3], criteria, [0.3, 5, 0.001], [(0, 15), (4, 10), (0, 10)])
+    # show_3d_kd_tree(t, [1, 2, 4], criteria, [20, 5, 2], [(0, 20), (4, 10), (0, 2)])
+
+    # show_1d_points(filename, "area", 500, (0, 5000))
 
 
     def criteria(img):

@@ -1,24 +1,25 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-
+# Fonction de récompense appliquée en x
+#   Connexion: [x1, x4]
+#   Bonne connexion: [x2, x3]
 def reward(x, x1, x2, x3, x4):
-    maxoutput = 1
-    exponent = 2
+    maxoutput, exponent = 1, 2
 
-    if x < x1:      #Under minimum
+    if x < x1:      #En dessous de la connexion
         return -((x1-x)/(x2-x1)*2)**exponent
-    elif x < (x1+x2)/2:     #Lower than usual (left)
+    elif x < (x1+x2)/2:     #Connexion basse (gauche)
         return ((x-x1)/(x2-x1)*2)**exponent * maxoutput/2
-    elif x < x2:            #Lower than usual (right)
+    elif x < x2:            #Connexion basse (droite)
         return (2 - ((x2-x)/(x2-x1)*2)**exponent) * maxoutput/2
-    elif x < x3:    #Usual
+    elif x < x3:    #Bonne connexion
         return maxoutput
-    elif x < (x3+x4)/2:     #Higher than usual (left)
+    elif x < (x3+x4)/2:     #Connexion haute (gauche)
         return (2 - ((x-x3)/(x4-x3)*2)**exponent) * maxoutput/2
-    elif x < x4:            #Higher than usual (right)
+    elif x < x4:            #Connexion haute (droite)
         return ((x4-x)/(x4-x3)*2)**exponent * maxoutput/2
-    else:           #Over maximum
+    else:           #Au dessus de la connexion
         return -((x-x4)/(x4-x3)*2)**exponent
 
 if __name__ == '__main__':

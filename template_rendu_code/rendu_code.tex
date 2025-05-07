@@ -1,0 +1,98 @@
+\documentclass[12pt,a4paper,fleqn]{article}
+
+%%%%%%%%%%%%%%%%%%%%%% LES PACKAGES
+\input{packages_MPI.tex}
+
+%%%%%%%%%%%%%%%%%%%%%% MISE EN FORME
+\colorlet{expli}{gray}
+\input{mise_en_forme_MPI.tex}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+\pagestyle{fancy} %active les pieds de pages
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\titreRenduCode{Détection et repérage d'un ballon de volley-ball à partir d'une entrée vidéo}{20 Juillet 2024}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%\input{conseils.tex} % ligne à commenter pour votre rendu 
+
+
+\tableofcontents
+\chapter{}
+
+
+% Fichiers à entrer
+% ../color.py ----------------------------
+% ../circle.py ---------------------------
+% ../reward_functions.py -----------------
+% ../find_ball_v6.py ---------------------
+% ../classifieur.py ----------------------
+% ../track.py ----------------------------
+% ../compteur_de_balle.py ----------------
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+\section{Fichiers auxiliaires}
+
+%================================= color.py
+\subsection{Code du fichier \mintinline{text}{color.py}}
+\inputminted{python}{../color.py}
+
+%================================= circle.py
+\subsection{Code du fichier \mintinline{text}{circle.py}}
+\inputminted{python}{../circle.py}
+
+%================================= reward_function.py
+\newpage
+\subsection{Code du fichier \mintinline{text}{reward_function.py}}
+\inputminted[firstline=1,lastline=23]{python}{../reward_functions.py}
+
+%================================= compteur_de_balle.py
+\subsection{Code du fichier \mintinline{text}{compteur_de_balle.py}}
+\inputminted[firstline=1,lastline=57]{python}{../compteur_de_balle.py}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+\section{Arbres k-dimensionnels: code du fichier \mintinline{text}{classifieur.py}}
+
+\subsection{Classe de donnée}
+\inputminted[firstline=1,lastline=36]{python}{../classifieur.py}
+\subsection{Intéractions avec un fichier csv}
+\inputminted[firstline=42,lastline=147]{python}{../classifieur.py}
+\subsection{Intéractions avec un arbre k-dimensionnel}
+\inputminted[firstline=155,lastline=239]{python}{../classifieur.py}
+\newpage
+\subsection{Fonctions d'affichage}
+\inputminted[firstline=246,lastline=307]{python}{../classifieur.py}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+\section{Trajectoires: code du fichier \mintinline{text}{track.py}}
+
+\subsection{Fonctions auxiliaires}
+\inputminted[firstline=1,lastline=17]{python}{../track.py}
+\subsection{Classe de trajectoire}
+\inputminted[firstline=19,lastline=126]{python}{../track.py}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+\section{Fichier principal: code du fichier \mintinline{text}{find_ball_v6.py}}
+
+\subsection{Fonctions d'analyse de contours}
+\inputminted[firstline=1,lastline=142]{python}{../find_ball_v6.py}
+\subsection{Variables globales et déclenchement du main}
+\inputminted[firstline=285,lastline=295]{python}{../find_ball_v6.py}
+\newpage
+\subsection{Fonction principale d'analyse vidéo}
+\inputminted[firstline=146,lastline=282]{python}{../find_ball_v6.py}
+
+
+
+\end{document}

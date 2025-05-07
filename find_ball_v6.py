@@ -4,66 +4,16 @@ import numpy as np
 import os
 from color import Color
 from circle import Circle
-# from analyse_tools import *
 import classifieur
 from track import Track
-
-
-#Give a score to a contour regarding only its shape and position
-'''
-What is looked at (contour):
-    ?Height ratio (height comared to other contours)
-        smaller = better
-    --Contour area ??
-        usually between 300 and 800 (depends a lot on speed)
-        minimum seen : 40
-        maximim seen : 1200
-    ?Height / Width ratio
-        usually between 0.7 and 1.8
-        minimum seen : 0.5
-        maximum seen : 3.2
-    ||Extent : Object area / Bounding rectangle area
-        ususlly between 0.5 and 0.75
-        minimum seen : 0.25
-        maximum seen : 0.85
-    ||Compactness: Perimeter / Area
-        usually between 0.15 and 0.35
-        minimum seen : 0.13
-        maximum seen : 0.58
-    ||Solidity : Contour Area / Convex Hull Area
-        usually between 0.8 and 1.0
-        minimum seen : 0.6
-        maximum seen : 1.0
-
-    Hough Detection
-    Image comparison
-    COCO image detection
-'''
-
-''' 
-Score criteria (trajectory):
-    Big speed
-    Top of screen
-    Corresponding angle / position (KALMAN FILTER)
-    Corresponding radius
-    Color ?
-    IS CIRCLE
-        Height / Width ratio
-        Compactness: Perimeter / Area
-        Hough Detection
-        Image comparison
-'''
-
-
-
 
 
 # Trouve toutes les informations sur un contour unique - exporte et importe dans l'arbre kd et renvoie le cercle trouvé
 def analyse_contour(full, contour, thresh, x, y, width, height, nbrFormes, infos=False):
     contourArea = cv2.contourArea(contour)
-    hull = cv2.convexHull(contour)
+    hull = cv2.convexHull(contour)  # Enveloppe convexe
     hullArea = cv2.contourArea(hull)
-    (cx, cy), r = cv2.minEnclosingCircle(contour)
+    (cx, cy), r = cv2.minEnclosingCircle(contour) # Cercle minimum
     circleArea = np.pi*(r**2)
     frameArea = width * height
 
@@ -82,17 +32,17 @@ def analyse_contour(full, contour, thresh, x, y, width, height, nbrFormes, infos
         "frame": frameArea, "formes": nbrFormes
         }
 
-    # Qualifier la donnée avec l'arbre kd
+    # Noter le contour avec l'arbre kd
     global kd_tree, kd_tree_criteria, kd_tree_normalization, nbr_voisins
     if kd_tree is not None:
-        point_data = [data[crit] for crit in kd_tree_criteria]
+        point_data = [data[crit] for crit in kd_tree_criteria] # Point dans l'espace de l'arbre kd
         point_classifieur = classifieur.Data.create_point(point_data)
         score_balle = classifieur.score_ppv(kd_tree, point_classifieur, nbr_voisins, kd_tree_normalization)
         if infos:
             print("ppv", classifieur.k_ppv(kd_tree, point_classifieur, 5, kd_tree_normalization))
             print("Score ppv", score_balle)
         return_info = Circle((cx+x, cy+y), r, score_balle)
-    else: # Si l'arbre n'est pas défini
+    else: # Si l'arbre n'est pas défini on note le contour juste à l'aide de la circularité
         return_info = Circle((cx+x, cy+y), r, circularite)
 
     # Exporter la donnée dans l'arbre kd
@@ -115,81 +65,102 @@ def analyse_contour(full, contour, thresh, x, y, width, height, nbrFormes, infos
     return return_info
 
 
-# Trouve toutes les informations sur une zone de mouvement unique - renvoie tous les cercles trouvés
-def analyse(raw, delta, x, y, height, width, infos=False):
+# Trouve toutes les informations sur une zone de mouvement unique
+#   Renvoie tous les cercles trouvés ayant un score plus grand que min_score
+def analyse(raw, delta, x, y, height, width, min_score, infos=False, show=False):
+    if height <= 0 or width <= 0:
+        return []
     global min_side_size
-    LUM_BAS = 30
+    LUM_BAS = 30  # Minimum gardé par le filtre passe-haut
     thresh = cv2.threshold(delta, LUM_BAS, 255, cv2.THRESH_BINARY)[1]
     colorthresh = cv2.cvtColor(thresh, cv2.COLOR_GRAY2RGB)
     
-
-    # Méthode d'analyse de chaque composante connexe
+    # Analyse de chaque contour
     contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     cercles = []
     nbrFormes = len(contours)
-    if contours:
+    if contours and show:
         cv2.imshow("analysed zone", raw)
     for contour in contours:
-        tx,ty,tw,th = cv2.boundingRect(contour)
+        tx,ty,tw,th = cv2.boundingRect(contour) # Rectangle englobant du contour
         zone = thresh[ty:ty+th, tx:tx+tw]
-        if min(tw, th) > min_side_size:
+        if min(tw, th) > min_side_size: # Si le contour est trop petit on l'ignore
             cercle = analyse_contour(colorthresh.copy(), contour, zone, tx, ty, tw, th, nbrFormes, infos)
-            if cercle is not None:
+            if cercle is not None and cercle.score > min_score:
                 (cx, cy) = cercle.center
                 cercle.center = (cx + x, cy + y) # On décale le centre par rapport à l'emplacement de la zone
                 cercles.append(cercle)
-    if contours:
+    if contours and show:
         cv2.destroyWindow("analysed zone")
     return cercles
 
 
-
-# Exporte une image de seuil dans le fichier csv de nom filename
-# avec les informations de solidité, circularité, et taille et si c'est le ballon
+# Exporte une image de seuil "thresh" d'un contour
+#   Exporte aussi les données "data" du contour dans le fichier csv "filename"
 def export_data(filename, thresh, data):
     print(data)
     img_dir = 'data/img_contour'
     l = len(os.listdir(img_dir))
     data["id"] = l
-    if os.path.isfile(filename):
+    if os.path.isfile(filename): # Le fichier csv existe déjà
         csvfile = open(filename, "a", newline="")
         writer = csv.DictWriter(csvfile, delimiter=";", fieldnames=list(data.keys()))
-    else:
+    else:  # Le fichier n'existe pas encore
         csvfile = open(filename, "w", newline="")
         writer = csv.DictWriter(csvfile, delimiter=";", fieldnames=list(data.keys()))
         writer.writeheader()
-    cv2.imwrite(f"{img_dir}/{l}.png", thresh)
-    writer.writerow(data)
+    cv2.imwrite(f"{img_dir}/{l}.png", thresh) # Exporte l'image
+    writer.writerow(data) # Exporte les données
     csvfile.close()
         
 
+# Trouve les contours des zones de mouvement et actualise avg_frame
+def get_contours(delta, avg_delta, gray, avg_frame, frames_seen):
+    LOWPASS = 10     # Borne inférieure du passe-haut
+    HIGHPASS = 255   # Borne supérieure du passe-haut
+    dilateSize = 20  # Taille de dilatation des contours
 
-def main(filename, scaledown, frame_offset, INFOS=False):
-    ####################
-    #### Constantes ####
-    ####################
+    threshold_prec = cv2.threshold(delta, LOWPASS, HIGHPASS, cv2.THRESH_BINARY)[1]  # Passe-haut appliqué
+    threshold_prec = cv2.dilate(threshold_prec,None,iterations = dilateSize)  # Formes dilatées (regroupe les formes)
+    low_threshold = cv2.bitwise_not(cv2.dilate(threshold_prec,None,iterations = dilateSize))  # Parties de l'image qui n'ont pas bougé
+    threshold_prec = cv2.erode(threshold_prec, None, iterations = dilateSize) # Formes recompressées
+
+    threshold_avg = cv2.threshold(avg_delta, LOWPASS, HIGHPASS, cv2.THRESH_BINARY)[1] # Pareil mais avec l'image moyenne
+    threshold_avg = cv2.dilate(threshold_avg,None,iterations = dilateSize)
+    threshold_avg = cv2.erode(threshold_avg, None, iterations = dilateSize)
+
+    threshold = cv2.bitwise_and(threshold_avg, threshold_prec)  # Correction de threshold avec l'image moyenne
+    contours, _ = cv2.findContours(threshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    # Mise à jour de l'image moyenne
+    still_gray = cv2.bitwise_and(gray, low_threshold)  # Parties de l'image qui n'ont pas bougé, peint avec gray (infos à ajouter)
+    missing = cv2.bitwise_and(avg_frame, cv2.bitwise_not(low_threshold))  # Parties de l'image qui ont bougé, peint avec avg_frame
+    gray_no_movement = cv2.addWeighted(still_gray, 1, missing, 1, 0)  # Concaténation des 2
+    alpha = 2.5/(frames_seen)  # Calcul de l'importance de l'information à ajouter (plus on a vu d'images, moins on a besoin de changer avg_frame)
+    new_avg_frame = cv2.addWeighted(gray_no_movement, alpha, avg_frame, 1-alpha, 0.0)  # Mise à jour de avg_frame
+
+    return (contours, new_avg_frame, threshold)
+
+
+
+def main(filename, scaledown, frame_offset, INFOS_CONTOURS=False, INFOS_TRACKS=False, show=False):
+    ##################################################################
+    #### Définit les variables importantes et initialise la vidéo ####
+    ##################################################################
     video = cv2.VideoCapture(f'data\\{filename}.mp4')
-    precedant = None
-    global tracklist
-    tracklist = []  #Liste des trajectoires possibles par score décroissant
-
-
-    ########################
-    #### Get Properties ####
-    ########################
+    global min_circle_score
     if video.isOpened():  
-        vidwidth = int(video.get(3))
+        vidwidth, vidheight = int(video.get(3)), int(video.get(4))
         vidwidthscale = int(vidwidth * scaledown)
-        vidheight = int(video.get(4))
         vidheightscale = int(vidheight * scaledown)
         vidfps = video.get(5)
         vidframe_count = int(video.get(7))
+        print(vidwidthscale, vidheightscale)
         print(vidwidth, vidheight, vidfps, vidframe_count)
-        precedant, avg_frame, frames_seen = None, None, 0
         fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
         out = cv2.VideoWriter(f"data/output.mp4", fourcc, vidfps, (round(vidwidth),round(vidheight)))
+        precedant, avg_frame, frames_seen, tracklist = None, None, 0, []
 
-    
     # Skip les premières frames
     for i in range(frame_offset):
         check, frame = video.read()
@@ -197,259 +168,128 @@ def main(filename, scaledown, frame_offset, INFOS=False):
             break
 
     while video.isOpened():
-        ######################################################
-        #### Read frame and close at the end of the video ####
-        ######################################################
+        ##############################################################
+        #### Lit une image et ferme la vidéo si elle est terminée ####
+        ##############################################################
         check, frame = video.read()
         if not check:
             break
 
-        ##########################################
-        #### Preprocessing (grayscale + blur) ####
-        ##########################################
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) #Get gray image
-        gray = cv2.GaussianBlur(gray,(31,31), 0)  #Gaussian size needs to be odd
+        #####################################
+        #### Preprocessing (gris + flou) ####
+        #####################################
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) # L'image en niveaux de gris
+        gray = cv2.GaussianBlur(gray,(31,31), 0)  # Flou gaussien
         if frames_seen == 0:
-            precedant = gray
-            avg_frame = gray
+            precedant, avg_frame = gray, gray
         frames_seen += 1
         print("Current frame:", frames_seen)
 
         delta = cv2.absdiff(precedant, gray) # Différence avec l'image précédente
         avg_delta = cv2.absdiff(avg_frame, gray) # Différence avec l'image moyenne
-        precedant = gray
+        precedant = gray # On met à jour precedant pour la prochaine image
 
-        ########################################
-        #### Get contours of movement areas ####
-        ########################################
-        LOWPASS = 10
-        HIGHPASS = 255
-        threshold_prec= cv2.threshold(delta, LOWPASS, HIGHPASS, cv2.THRESH_BINARY)[1]
-        threshold_prec = cv2.dilate(threshold_prec,None,iterations = 10)  #Get larger whites
-        low_threshold = cv2.bitwise_not(cv2.dilate(threshold_prec,None,iterations = 10))  # For the average image
-        threshold_prec = cv2.erode(threshold_prec, None, iterations = 10)
+        ####################################################
+        #### Trouve les contours des zones de mouvement ####
+        ####################################################
+        contours, avg_frame, threshold = get_contours(delta, avg_delta, gray, avg_frame, frames_seen)
 
-        threshold_avg= cv2.threshold(delta, LOWPASS, HIGHPASS, cv2.THRESH_BINARY)[1]
-        threshold_avg = cv2.dilate(threshold_avg,None,iterations = 10)  #Get larger whites
-        threshold_avg = cv2.erode(threshold_avg, None, iterations = 10)
-
-        threshold = cv2.bitwise_and(threshold_avg, threshold_prec)
-        contours, _ = cv2.findContours(threshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-        # Update average image
-        still_gray = cv2.bitwise_and(gray, low_threshold)
-        missing = cv2.bitwise_and(avg_frame, cv2.bitwise_not(low_threshold))
-        gray_no_movement = cv2.addWeighted(still_gray, 1, missing, 1, 0)
-        alpha = 2.5/(frames_seen)
-        avg_frame = cv2.addWeighted(gray_no_movement, alpha, avg_frame, 1-alpha, 0.0)
-        # Other version
-        # alpha = 2.5/(frames_seen)
-        # avg_frame = cv2.addWeighted(gray, alpha, avg_frame, 1-alpha, 0.0)
-
-        # blank = np.zeros([int(vidheight), int(vidwidth), 3], dtype=np.uint8)
-        # cont1 = blank.copy()
-        # cont2 = blank.copy()
-        # cv2.drawContours(cont1, contours, -1, Color.orange, 2)
-        # cpy = frame.copy()
-        # circles = findcircles(frame, 0, 0, vidheight, vidwidth, infos=False)
-        # for c in circles:
-        #     cv2.circle(cpy, c.center, round(c.radius), Color.green, 3)
-
-
-
-
-
-
-        ##########################
-        #### Analyse contours ####
-        ##########################
+        ####################################################################
+        #### Analyse les contours et relie les cercles aux trajectoires ####
+        ####################################################################
         newtracks = []
-        for contour in contours:   #https://docs.opencv.org/3.4/d1/d32/tutorial_py_contour_properties.html
-            ############################################
-            #### Find circles in each movement area ####
-            ############################################
+        for contour in contours:
+            ###########################################################
+            #### Trouve tous les cercles dans la zone de mouvement ####
+            ###########################################################
             x,y,width,height = cv2.boundingRect(contour)
             zone = frame[y:y+height, x:x+width]
-
-            # if width > 60 and height > 60:
             zonedelta = delta[y:y+height, x:x+width]
-            analyse(zone, zonedelta, x, y, height, width, INFOS)
+            circles = analyse(zone, zonedelta, x, y, height, width, min_circle_score, INFOS_CONTOURS)
 
-            circles = []
-
-            # cv2.rectangle(cont2, (x, y), (x+width, y+height), Color.red, 5)
-
-            #####################################
-            #### Add circles to trajectories ####
-            #####################################
-            for t in tracklist:
-                if t.connect_box(x,y,width,height):  #1st fast check
-
-                    # nf = frame.copy()
-                    # cv2.rectangle(nf, (x,y), (x+width,y+height), Color.green, 3)
-                    # t.draw(nf, Color.green, 3)
-                    # cv2.imshow('Box connect', cv2.resize(nf, [vidwidthscale, vidheightscale]))
+            ###############################################
+            #### Connecte les cercles aux trajectoires ####
+            ###############################################
+            for t in tracklist:  # On itère sur les tracks plutôt que sur les cercles pour tout skip si le 1e test échoue
+                if t.connect_box(x,y,width,height):  # 1e check rapide (la zone est connectée)
+                    if INFOS_TRACKS: # On affiche la zone (et ses cercles) <Violet> et la track <Bleue> connectée
+                        nf = frame.copy()
+                        t.draw_connect_box(nf,x,y,width,height,Color.purple,2)
+                        t.draw(nf, Color.blue, 3)
                     for c in circles:
-                        # nf = frame.copy()
-                        # for o in circles:
-                        #     cv2.circle(nf, o.center, round(o.radius), Color.white, 3)
-                        # t.draw(nf, Color.purple, -1)
-
                         cs = t.connect_score(c)
-                        if cs > 0:          #2nd slow but precise check
-                            color = Color.green
-
-                            n = t.copy()
-                            n.add_circle(c,cs)
-                            newtracks.append(n)
+                        if cs > 0:          # 2e check plus précis
+                            new = t.copy()
+                            new.add_circle(c,cs)
+                            newtracks.append(new)
                             t.check = True
                             circles.remove(c)
+                            draw_color = Color.green
                         else:
-                            color = Color.red
-                        
-                    #     cv2.circle(nf, c.center, round(c.radius), color, 3)
-                    #     cv2.putText(nf, str(round(cs,2)), c.center, cv2.FONT_HERSHEY_SIMPLEX, 3, color, 3)
-                    #     cv2.imshow('Circle connect', cv2.resize(nf[max(0, y-2*height):min(vidheight,y+2*height), max(0, x-2*width):min(vidwidth,x+2*width)], [vidwidthscale, vidheightscale]))
-                    #     cv2.imshow('Circle connect', cv2.resize(nf, [vidwidthscale, vidheightscale]))
-                    #     if cv2.waitKey(0) & 0xFF == ord('q'):
-                    #         break
-                    # if circles:
-                    #     cv2.destroyWindow('Circle connect')
-                else:
-                    pass
-                #     nf = frame.copy()
-                #     cv2.rectangle(nf, (round(x-width/2),round(y-height/2)), (round(x+width*1.5),round(y+height*1.5)), Color.red, 3)
-                #     t.draw(nf, Color.red, 3)
-                #     cv2.imshow('Box connect', cv2.resize(nf, [vidwidthscale, vidheightscale]))
-                # if cv2.waitKey(0) & 0xFF == ord('q'):
-                #     break
-
-
-            ########################################################
-            #### Create new trajectories with unmatched circles ####
-            ########################################################
+                            draw_color = Color.red
+                        if INFOS_TRACKS:
+                            c.draw(nf, draw_color, 2)
+                            cv2.putText(nf, str(round(cs,2)), tuple(map(round, c.center)), cv2.FONT_HERSHEY_SIMPLEX, 2, draw_color, 3)
+                    if INFOS_TRACKS:
+                        cv2.imshow('Normal track connect', cv2.resize(nf, [vidwidthscale, vidheightscale]))
+                        cv2.waitKey(0)
+            
+            #############################################################
+            #### Nouvelle trajectoire pour chaque cercle non couvert ####
+            #############################################################
             for c in circles:
                 newtracks.append(Track(c))
+        if INFOS_TRACKS:
+            try:   # On fait un try except au cas où y'avait aucun contour
+                cv2.destroyWindow('Normal track connect')
+            except cv2.error:
+                pass
 
-        #####################################################
-        #### Vérifier les zones d'intérêt sans mouvement ####
-        #####################################################        
-        for t in tracklist:
-            print("Completing", t)
-            if not t.check:
-                nf = frame.copy()
-                t.draw(nf)
-                # cv2.imshow('Not connected tracks', cv2.resize(nf, [vidwidthscale, vidheightscale]))
-                cv2.waitKey(0)
-                cv2.destroyWindow('Not connected tracks')
-
-
-
-                xp, yp = t.predicted
-                if 0 <= xp <= vidwidth and 0 <= yp <= vidheight:
-                    buffer = round(t.last_circle.radius*3)
-                    zone = frame[max(0, yp-buffer):min(vidheight,yp+buffer), max(0, xp-buffer):min(vidwidth,xp+buffer)]
-                    circles = findcircles(zone, xp-buffer, yp-buffer, 2*buffer, 2*buffer, infos=INFOS)
-
-                    for c in circles:
-                        nf = frame.copy()
-                        for o in circles:
-                            cv2.circle(nf, o.center, round(o.radius), Color.white, 3)
-                        t.draw(nf, Color.purple, 3)
-
-                        cs = t.connect_score(c)
-                        if cs > 0:
-                            color = Color.green
-
-                            n = t.copy()
-                            n.add_circle(c,cs)
-                            newtracks.append(n)
-                            t.check = True
-                        else:
-                            color = Color.red
-
-                        cv2.circle(nf, c.center, round(c.radius), color, 3)
-                        cv2.putText(nf, str(round(cs,2)), c.center, cv2.FONT_HERSHEY_SIMPLEX, 3, color, 3)
-                        # cv2.imshow('No movement check', cv2.resize(nf[max(0, yp-2*buffer):min(vidheight,yp+2*buffer), max(0, xp-2*buffer):min(vidwidth,xp+2*buffer)], [vidwidthscale, vidheightscale]))
-                        # cv2.imshow('No movement check', cv2.resize(nf, [vidwidthscale, vidheightscale]))
-                        # if cv2.waitKey(0) & 0xFF == ord('q'):
-                        #     break
-                    # if circles:
-                    #     cv2.destroyWindow('No movement check')
-
-        ###############################################
-        #### Traîter les trajectoires non touchées ####
-        ###############################################
+        #######################################################
+        #### Sauver les trajectoires probables mais ratées ####
+        #######################################################
         for t in tracklist:
             if not t.check:
-                if t.score >= 20:
-                    print("Failsafe")
-                    t.add_circle(Circle(t.predicted, t.last_circle.radius, 1), -40)
-                    newtracks.append(t)
+                idle_tracks = t.idle()
+                newtracks += idle_tracks
 
-
+        ##################################
+        #### Dessine les trajectoires ####
+        ##################################
         tracklist = newtracks
-        for t in tracklist:
-            nf = frame.copy()
-            t.draw(nf, Color.darkgreen, -1)
-            cv2.imshow('track', cv2.resize(nf, [vidwidthscale, vidheightscale]))
-            if cv2.waitKey(0) & 0xFF == ord('q'):
-                break
-        if cv2.getWindowProperty('track', cv2.WND_PROP_VISIBLE) == 1:  #Si la fenêtre n'est pas fermée
-            cv2.destroyWindow('track')
+        outFrame = frame.copy()  # Frame qu'on va exporter dans la vidéo
+        if tracklist:
+            print(sorted(map(lambda t: t.score, tracklist)))
+            bestTrajectory = max(tracklist, key = lambda t: t.score)
+            print(bestTrajectory)
+            for t in tracklist:
+                # if t == bestTrajectory and t.score > 5:
+                if t == bestTrajectory:
+                    drawColor = Color.green
+                    t.draw(outFrame, Color.green, -1, draw_score=False)  # Montre la meilleure trajectoire
+                else:
+                    drawColor = Color.red
+                # t.draw(outFrame, drawColor, -1, draw_score=False)  # Montre toutes les trajectoires
+        out.write(outFrame)
 
+        if show:
+            cv2.imshow('frame', cv2.resize(frame, [vidwidthscale, vidheightscale]))
+            cv2.imshow('tracks', cv2.resize(outFrame, [vidwidthscale, vidheightscale]))
 
-
-        # cv2.drawContours(frame, contours, -1, (255, 0, 0), 2)
-        # cv2.imshow('midframe', cv2.resize(avg_frame, [vidwidthscale, vidheightscale]))
-        # cv2.imshow('still gray', cv2.resize(still_gray, [vidwidthscale, vidheightscale]))
-        # cv2.imshow('missing', cv2.resize(missing, [vidwidthscale, vidheightscale]))
-        cv2.imshow('threshold', cv2.resize(threshold, [vidwidthscale, vidheightscale]))
-        cv2.imshow('frame', cv2.resize(frame, [vidwidthscale, vidheightscale]))
-        # cv2.imshow('circles', cv2.resize(cpy, [vidwidthscale, vidheightscale]))
-        # out.write(cpy)
-        # cv2.imshow('delta', cv2.resize(delta, [vidwidthscale, vidheightscale]))
-        # cv2.imshow('threshold 1', cv2.resize(t1, [vidwidthscale, vidheightscale]))
-        # cv2.imshow('threshold 2', cv2.resize(threshold, [vidwidthscale, vidheightscale]))
-        # cv2.imshow('contours 1', cv2.resize(cont1, [vidwidthscale, vidheightscale]))
-        # cv2.imshow('contours 2', cv2.resize(cont2, [vidwidthscale, vidheightscale]))
-
-        #Quit window with "q"
-        if cv2.waitKey(0) & 0xFF == ord('q'):
-            # out.release()
+        if cv2.waitKey(0) & 0xFF == ord('q'):  # Quitter avec "q"
             break
+    print("Exiting")
+    out.release()
 
 
-videos = ['videos/4_service', 'videos/4_top_smash']
-global kd_tree, kd_tree_criteria, kd_tree_normalization, csv_filename, nbr_voisins, min_side_size
+videos = ['videos/4_service', 'videos/4_top_smash', 'videos/4_paraboles', 'videos/4_block', 'videos/4_rien3', 'videos/1_smash_let', 'videos/4_rien2']
+global kd_tree, kd_tree_criteria, kd_tree_normalization, csv_filename, nbr_voisins, min_side_size, min_circle_score
 min_side_size = 30
+min_circle_score = 0.4
 csv_filename = "data/contours_tree.csv"
-kd_tree_criteria = ["formes", "circularite", "taille", "circle"]
-kd_tree_normalization = [0.3, 20, 15, 0.001]
+kd_tree_criteria = ["formes", "circularite", "taille", "circle", "solidite"]
+kd_tree_normalization = [0.3, 20, 5, 0.001, 2]
 nbr_voisins = 50
 # kd_tree = classifieur.build_kd_tree("data/all.csv", kd_tree_criteria)
 kd_tree = classifieur.build_kd_tree("data/contours_tree.csv", kd_tree_criteria)
-main(videos[1], .25, frame_offset=0, INFOS=True)
-
-
-
-
-# try:
-#     out.release()
-# except Exception:
-#     pass
-
-# im = cv2.imread("data\\faux_negatif.png")
-# findcircles(im, 0, 0, im.shape[0], im.shape[1], infos=True)
-
-
-'''
-TODO:
-    - work when ball is moving towards camera (no absolute movement)
-    - not lose trajectories
-    - deal when prediction is outside box
-        File "c:\\Users\\livio\\Desktop\\fichiers_python\\fichiers\Volleyball\\find_ball_v4.py", line 345, in <module>
-        zone = frame[max(0, yp-buffer):min(vidheight,yp+buffer), max(0, xp-buffer):min(vidwidth,xp+buffer)]
-        TypeError: slice indices must be integers or None or have an __index__ method
-    - ball over net
-'''
+main(videos[6], .29, frame_offset=0, INFOS_CONTOURS=False, INFOS_TRACKS=False, show=False)

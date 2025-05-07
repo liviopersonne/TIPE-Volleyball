@@ -1,0 +1,18 @@
+\babel@toc {french}{}\relax 
+\contentsline {section}{\numberline {1}Fichiers auxiliaires}{2}{section.1}%
+\contentsline {subsection}{\numberline {1.1}Code du fichier \FVExtraRobustCommand \RobustMintInline \FVExtraAlwaysUnexpanded {\FVExtraUnexpandedReadStarOArgMArgBVArg {text}{color.py}}}{2}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}Code du fichier \FVExtraRobustCommand \RobustMintInline \FVExtraAlwaysUnexpanded {\FVExtraUnexpandedReadStarOArgMArgBVArg {text}{circle.py}}}{2}{subsection.1.2}%
+\contentsline {subsection}{\numberline {1.3}Code du fichier \FVExtraRobustCommand \RobustMintInline \FVExtraAlwaysUnexpanded {\FVExtraUnexpandedReadStarOArgMArgBVArg {text}{reward_function.py}}}{3}{subsection.1.3}%
+\contentsline {subsection}{\numberline {1.4}Code du fichier \FVExtraRobustCommand \RobustMintInline \FVExtraAlwaysUnexpanded {\FVExtraUnexpandedReadStarOArgMArgBVArg {text}{compteur_de_balle.py}}}{3}{subsection.1.4}%
+\contentsline {section}{\numberline {2}Arbres k-dimensionnels: code du fichier \FVExtraRobustCommand \RobustMintInline \FVExtraAlwaysUnexpanded {\FVExtraUnexpandedReadStarOArgMArgBVArg {text}{classifieur.py}}}{5}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Classe de donnée}{5}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Intéractions avec un fichier csv}{5}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}Intéractions avec un arbre k-dimensionnel}{8}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.4}Fonctions d'affichage}{10}{subsection.2.4}%
+\contentsline {section}{\numberline {3}Trajectoires: code du fichier \FVExtraRobustCommand \RobustMintInline \FVExtraAlwaysUnexpanded {\FVExtraUnexpandedReadStarOArgMArgBVArg {text}{track.py}}}{12}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Fonctions auxiliaires}{12}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Classe de trajectoire}{12}{subsection.3.2}%
+\contentsline {section}{\numberline {4}Fichier principal: code du fichier \FVExtraRobustCommand \RobustMintInline \FVExtraAlwaysUnexpanded {\FVExtraUnexpandedReadStarOArgMArgBVArg {text}{find_ball_v6.py}}}{15}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Fonctions d'analyse de contours}{15}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Variables globales et déclenchement du main}{18}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Fonction principale d'analyse vidéo}{19}{subsection.4.3}%

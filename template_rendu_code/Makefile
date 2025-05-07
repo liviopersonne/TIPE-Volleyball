@@ -1,0 +1,17 @@
+# MAKEFILE de nettoyage local pour fichiers issus de compilation tex
+
+main :
+	pdflatex -shell-escape rendu_code.tex
+
+clean : 
+	rm -f *.aux
+	rm -f *.out
+	rm -f *.log
+	rm -f *.synctex.gz
+	rm -f *.o
+	rm -f _minted*/*
+	rmdir _minted*
+	
+	
+	
+
